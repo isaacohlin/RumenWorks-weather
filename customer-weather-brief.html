@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RumenWorks — Farm Weather Intelligence</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --green-dark:  #1A4A2A;
+      --green-mid:   #2E7D45;
+      --green-light: #4CAF6A;
+      --green-pale:  #E8F5EC;
+      --green-tint:  #F2FAF4;
+      --amber:       #E67E22;
+      --amber-pale:  #FEF3E2;
+      --red:         #C0392B;
+      --red-pale:    #FDECEA;
+      --sky:         #1976D2;
+      --sky-pale:    #E3F2FD;
+      --text:        #1A2E1F;
+      --muted:       #5A7A63;
+      --border:      #C8DFD0;
+      --bg:          #F8FCF9;
+      --card:        #FFFFFF;
+      --shadow:      0 1px 4px rgba(26,74,42,0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--green-dark);
+      color: #fff;
+      padding: 0;
+    }
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .header-logo {
+      display: flex;
+      flex-direction: column;
+    }
+    .header-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .header-tagline {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.70);
+      margin-top: 2px;
+    }
+    .header-contact {
+      text-align: right;
+    }
+    .header-contact a {
+      display: inline-block;
+      background: var(--green-light);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 6px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .header-contact .contact-label {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.60);
+      margin-bottom: 3px;
+      text-align: right;
+    }
+
+    /* ── LOCATION BAR ── */
+    .loc-bar {
+      background: var(--green-mid);
+      padding: 8px 16px;
+    }
+    .loc-bar-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .loc-bar label {
+      color: rgba(255,255,255,0.80);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+    .loc-bar select {
+      flex: 1;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.30);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 26px;
+    }
+    .loc-bar select option { background: var(--green-dark); color: #fff; }
+    .loc-bar select optgroup { background: var(--green-dark); color: rgba(255,255,255,0.6); font-size: 0.75rem; }
+
+    /* ── MAIN WRAP ── */
+    .wrap {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 14px 12px 60px;
+    }
+
+    /* ── HERO ROW ── */
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .hero-card {
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .hero-icon { font-size: 1.4rem; line-height: 1; margin-bottom: 4px; }
+    .hero-val  { font-size: 1.4rem; font-weight: 700; line-height: 1.1; color: var(--green-dark); }
+    .hero-unit { font-size: 0.65rem; color: var(--muted); margin-top: 1px; }
+    .hero-label { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+    .hero-card.pgi-strong .hero-val { color: #2E7D32; }
+    .hero-card.pgi-moderate .hero-val { color: #558B2F; }
+    .hero-card.pgi-slow .hero-val { color: var(--amber); }
+    .hero-card.pgi-minimal .hero-val { color: #BF360C; }
+    .hero-card.pgi-poor .hero-val { color: var(--red); }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 16px 0 8px;
+    }
+
+    /* ── FORECAST STRIP ── */
+    .forecast-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .forecast-strip::-webkit-scrollbar { display: none; }
+    .fc-day {
+      flex: 0 0 72px;
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 9px 6px;
+      text-align: center;
+    }
+    .fc-day.today { border: 2px solid var(--green-mid); }
+    .fc-dow  { font-size: 0.7rem; font-weight: 700; color: var(--green-dark); }
+    .fc-date { font-size: 0.65rem; color: var(--muted); margin-bottom: 4px; }
+    .fc-icon { font-size: 1.3rem; margin: 3px 0; }
+    .fc-max  { font-size: 0.85rem; font-weight: 700; }
+    .fc-min  { font-size: 0.72rem; color: var(--muted); }
+    .fc-rain { font-size: 0.7rem; color: var(--sky); margin-top: 3px; }
+
+    /* ── DECISION CARDS ── */
+    .decisions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .dec-card {
+      border-radius: 10px;
+      padding: 13px;
+      border-left: 4px solid;
+    }
+    .dec-card.green  { background: var(--green-pale); border-color: var(--green-mid); }
+    .dec-card.amber  { background: var(--amber-pale); border-color: var(--amber); }
+    .dec-card.red    { background: var(--red-pale);   border-color: var(--red); }
+    .dec-card.sky    { background: var(--sky-pale);   border-color: var(--sky); }
+    .dec-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 4px; }
+    .dec-status { font-size: 1rem; font-weight: 700; margin-bottom: 5px; line-height: 1.2; }
+    .dec-card.green .dec-status  { color: var(--green-dark); }
+    .dec-card.amber .dec-status  { color: #A04000; }
+    .dec-card.red .dec-status    { color: var(--red); }
+    .dec-card.sky .dec-status    { color: #0D47A1; }
+    .dec-text { font-size: 0.78rem; color: var(--text); line-height: 1.45; }
+
+    /* ── ENSO STRIP ── */
+    .enso-strip {
+      background: var(--green-dark);
+      color: #fff;
+      border-radius: 10px;
+      padding: 13px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .enso-icon { font-size: 1.5rem; }
+    .enso-body { flex: 1; min-width: 180px; }
+    .enso-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+    .enso-desc  { font-size: 0.78rem; color: rgba(255,255,255,0.75); line-height: 1.4; }
+    .enso-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .enso-pill  { font-size: 0.7rem; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 2px 9px; }
+
+    /* ── CHART ── */
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .card h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+    .chart-wrap { height: 200px; }
+
+    /* ── SEASONAL OUTLOOK TABLE ── */
+    .outlook-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-bottom: 14px;
+    }
+    .outlook-table th {
+      background: var(--green-dark);
+      color: #fff;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    .outlook-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .outlook-table tr:last-child td { border-bottom: none; }
+    .outlook-table tr:nth-child(even) td { background: var(--green-tint); }
+    .pill-below  { background: var(--amber-pale); color: #7A3A00; border-radius: 8px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .pill-above  { background: var(--red-pale);   color: var(--red);   border-radius: 8px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .pill-near   { background: var(--sky-pale);   color: #0D47A1;     border-radius: 8px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+    .pill-likely { background: var(--green-pale);  color: var(--green-dark); border-radius: 8px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+      border-radius: 12px;
+      padding: 20px 18px;
+      text-align: center;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    .cta-banner h2 { font-size: 1.1rem; margin-bottom: 6px; }
+    .cta-banner p  { font-size: 0.82rem; color: rgba(255,255,255,0.80); margin-bottom: 14px; line-height: 1.5; }
+    .cta-btn {
+      display: inline-block;
+      background: #fff;
+      color: var(--green-dark);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: 11px 26px;
+      border-radius: 24px;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding: 16px 0 8px;
+      line-height: 1.7;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .footer a { color: var(--green-mid); text-decoration: none; }
+
+    /* ── LOADING / ERROR STATES ── */
+    .loading-bar {
+      background: var(--green-pale);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green-mid);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 480px) {
+      .hero { grid-template-columns: repeat(2, 1fr); }
+      .decisions-grid { grid-template-columns: 1fr; }
+      .header-name { font-size: 1.1rem; }
+      .hero-val { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════ HEADER ══════════════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-logo">
+      <div class="header-name">🌿 RumenWorks</div>
+      <div class="header-tagline">Farm Weather Intelligence — Northern NSW &amp; SE QLD</div>
+    </div>
+    <div class="header-contact">
+      <div class="contact-label">Talk to Ross</div>
+      <a href="tel:0447971836">📞 0447 971 836</a>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════ LOCATION BAR ══════════════════════ -->
+<div class="loc-bar">
+  <div class="loc-bar-inner">
+    <label for="locSelect">📍 Location:</label>
+    <select id="locSelect" onchange="onLocChange(this.value)">
+      <optgroup label="── Mid-North Coast NSW ──">
+        <option value="pm" selected>Port Macquarie</option>
+        <option value="kempsey">Kempsey</option>
+        <option value="taree">Taree</option>
+        <option value="coffsharbour">Coffs Harbour</option>
+      </optgroup>
+      <optgroup label="── Northern Rivers NSW ──">
+        <option value="lismore">Lismore</option>
+        <option value="casino">Casino</option>
+        <option value="grafton">Grafton</option>
+      </optgroup>
+      <optgroup label="── Northern Tablelands NSW ──">
+        <option value="armidale">Armidale</option>
+        <option value="glen_innes">Glen Innes</option>
+        <option value="inverell">Inverell</option>
+        <option value="tamworth">Tamworth</option>
+      </optgroup>
+      <optgroup label="── NW NSW Plains ──">
+        <option value="narrabri">Narrabri</option>
+        <option value="moree">Moree</option>
+      </optgroup>
+      <optgroup label="── Darling Downs QLD ──">
+        <option value="toowoomba">Toowoomba</option>
+        <option value="dalby">Dalby</option>
+        <option value="miles">Miles</option>
+      </optgroup>
+      <optgroup label="── Southern Downs QLD ──">
+        <option value="warwick">Warwick</option>
+        <option value="stanthorpe">Stanthorpe</option>
+        <option value="goondiwindi">Goondiwindi</option>
+      </optgroup>
+      <optgroup label="── Maranoa QLD ──">
+        <option value="roma">Roma</option>
+        <option value="st_george">St George</option>
+      </optgroup>
+      <optgroup label="── South Burnett / Wide Bay QLD ──">
+        <option value="kingaroy">Kingaroy</option>
+        <option value="gympie">Gympie</option>
+      </optgroup>
+      <optgroup label="── SE Queensland ──">
+        <option value="brisbane">Brisbane</option>
+        <option value="ipswich">Ipswich / Lockyer Valley</option>
+      </optgroup>
+    </select>
+  </div>
+</div>
+
+<!-- ══════════════════════ MAIN CONTENT ══════════════════════ -->
+<div class="wrap">
+
+  <!-- Loading state -->
+  <div id="loadingBar" class="loading-bar">
+    <span class="spinner"></span> Fetching weather data…
+  </div>
+
+  <!-- Content (hidden until data loads) -->
+  <div id="mainContent" style="display:none">
+
+    <!-- HERO ROW -->
+    <div class="hero" id="heroRow"></div>
+
+    <!-- FARM DECISIONS -->
+    <div class="section-label">🚜 Farm Decision Guide</div>
+    <div class="decisions-grid" id="decisionsGrid"></div>
+
+    <!-- 7-DAY FORECAST -->
+    <div class="section-label">📅 7-Day Forecast</div>
+    <div class="forecast-strip" id="forecastStrip"></div>
+
+    <!-- ENSO STRIP -->
+    <div class="enso-strip">
+      <div class="enso-icon">🌊</div>
+      <div class="enso-body">
+        <div class="enso-title">Seasonal Climate Driver — ENSO Watch</div>
+        <div class="enso-desc">Current status: <strong>Neutral → El Niño Watch (May 2026)</strong>. Niño3.4 = +0.23°C. 61% probability El Niño develops in coming months. BOM seasonal outlook May–Jul 2026 indicates <strong>60–80% chance of below-average rainfall</strong> and <strong>&gt;70% chance of above-average temperatures</strong> across Northern NSW and SE QLD.</div>
+        <div class="enso-pills">
+          <span class="enso-pill">Niño3.4 +0.23°C</span>
+          <span class="enso-pill">61% El Niño probability</span>
+          <span class="enso-pill">Below-normal rain likely</span>
+          <span class="enso-pill">Warmer than average</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAINFALL CHART -->
+    <div class="card">
+      <h3>Rainfall vs 30-Year Average (mm) — This Calendar Year</h3>
+      <div class="chart-wrap"><canvas id="rainChart"></canvas></div>
+    </div>
+
+    <!-- SEASONAL OUTLOOK TABLE -->
+    <div class="section-label">📋 Seasonal Outlook — May to October 2026</div>
+    <table class="outlook-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Rainfall</th>
+          <th>Temperature</th>
+          <th>Pasture Outlook</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>May 2026</strong></td>
+          <td><span class="pill-below">Below average</span></td>
+          <td><span class="pill-above">Above average</span></td>
+          <td>Slow growth. Monitor covers closely.</td>
+        </tr>
+        <tr>
+          <td><strong>Jun 2026</strong></td>
+          <td><span class="pill-below">Below average</span></td>
+          <td><span class="pill-above">Above average</span></td>
+          <td>Minimal growth likely. Supplement planning required.</td>
+        </tr>
+        <tr>
+          <td><strong>Jul 2026</strong></td>
+          <td><span class="pill-below">Below average</span></td>
+          <td><span class="pill-near">Near average</span></td>
+          <td>Dry winter. Check pasture reserves.</td>
+        </tr>
+        <tr>
+          <td><strong>Aug 2026</strong></td>
+          <td><span class="pill-near">Near average</span></td>
+          <td><span class="pill-above">Above average</span></td>
+          <td>Warming trend may assist spring flush.</td>
+        </tr>
+        <tr>
+          <td><strong>Sep 2026</strong></td>
+          <td><span class="pill-near">Near average</span></td>
+          <td><span class="pill-above">Above average</span></td>
+          <td>Spring recovery — dependent on winter rain.</td>
+        </tr>
+        <tr>
+          <td><strong>Oct 2026</strong></td>
+          <td><span class="pill-near">Near average</span></td>
+          <td><span class="pill-above">Above average</span></td>
+          <td>Fire risk elevated if summer drying continues.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- CTA BANNER -->
+    <div class="cta-banner">
+      <h2>Concerned about feed budgets or seasonal risk?</h2>
+      <p>Ross Bailey is an independent livestock nutrition advisor specialising in the Mid-North Coast and surrounding regions. Trusted by farmers for practical, on-the-ground advice — not guesswork.</p>
+      <a href="tel:0447971836" class="cta-btn">📞 Call Ross: 0447 971 836</a>
+    </div>
+
+  </div><!-- /mainContent -->
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Weather data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (16-day forecast + 90-day archive) ·
+    Seasonal outlook: <a href="https://www.bom.gov.au/climate/outlooks/" target="_blank">Bureau of Meteorology</a> ·
+    Pasture Growth Index is a calculated estimate — verify with on-ground assessment.<br>
+    This page is for planning guidance only. Always cross-reference BOM official forecasts for operational decisions.<br>
+    <a href="index.html">Full Technical Dashboard</a> ·
+    <a href="https://www.bom.gov.au/climate/enso/" target="_blank">BOM ENSO Monitor</a>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+const LOCATIONS = {
+  pm:          { name: 'Port Macquarie',           region: 'Mid-North Coast NSW',     lat: -31.43, lon: 152.92 },
+  kempsey:     { name: 'Kempsey',                  region: 'Mid-North Coast NSW',     lat: -31.08, lon: 152.83 },
+  taree:       { name: 'Taree',                    region: 'Mid-North Coast NSW',     lat: -31.90, lon: 152.47 },
+  coffsharbour:{ name: 'Coffs Harbour',            region: 'Mid-North Coast NSW',     lat: -30.30, lon: 153.12 },
+  lismore:     { name: 'Lismore',                  region: 'Northern Rivers NSW',     lat: -28.81, lon: 153.28 },
+  casino:      { name: 'Casino',                   region: 'Northern Rivers NSW',     lat: -28.87, lon: 153.05 },
+  grafton:     { name: 'Grafton',                  region: 'Northern Rivers NSW',     lat: -29.69, lon: 152.93 },
+  armidale:    { name: 'Armidale',                 region: 'Northern Tablelands NSW', lat: -30.51, lon: 151.67 },
+  glen_innes:  { name: 'Glen Innes',               region: 'Northern Tablelands NSW', lat: -29.73, lon: 151.73 },
+  inverell:    { name: 'Inverell',                 region: 'Northern Tablelands NSW', lat: -29.77, lon: 151.12 },
+  tamworth:    { name: 'Tamworth',                 region: 'Northern Tablelands NSW', lat: -31.08, lon: 150.92 },
+  narrabri:    { name: 'Narrabri',                 region: 'NW NSW Plains',           lat: -30.32, lon: 149.78 },
+  moree:       { name: 'Moree',                    region: 'NW NSW Plains',           lat: -29.46, lon: 149.84 },
+  toowoomba:   { name: 'Toowoomba',                region: 'Darling Downs QLD',       lat: -27.56, lon: 151.95 },
+  dalby:       { name: 'Dalby',                    region: 'Darling Downs QLD',       lat: -27.18, lon: 151.27 },
+  miles:       { name: 'Miles',                    region: 'Darling Downs QLD',       lat: -26.66, lon: 150.18 },
+  warwick:     { name: 'Warwick',                  region: 'Southern Downs QLD',      lat: -28.22, lon: 151.93 },
+  stanthorpe:  { name: 'Stanthorpe',               region: 'Southern Downs QLD',      lat: -28.65, lon: 151.93 },
+  goondiwindi: { name: 'Goondiwindi',              region: 'Southern Downs QLD',      lat: -28.55, lon: 150.31 },
+  roma:        { name: 'Roma',                     region: 'Maranoa QLD',             lat: -26.57, lon: 148.79 },
+  st_george:   { name: 'St George',                region: 'Maranoa QLD',             lat: -28.05, lon: 148.58 },
+  kingaroy:    { name: 'Kingaroy',                 region: 'South Burnett QLD',       lat: -26.54, lon: 151.84 },
+  gympie:      { name: 'Gympie',                   region: 'Wide Bay QLD',            lat: -26.19, lon: 152.66 },
+  brisbane:    { name: 'Brisbane',                 region: 'SE Queensland',           lat: -27.47, lon: 153.03 },
+  ipswich:     { name: 'Ipswich / Lockyer Valley', region: 'SE Queensland',           lat: -27.61, lon: 152.75 },
+};
+
+const NORMALS_BY_LOC = {
+  pm:          { rainfall:[175,170,173,151,147,152, 98, 88, 89,110,144,168], maxTemp:[28.4,28.0,27.1,24.4,21.7,19.2,18.8,20.1,22.6,24.6,26.5,27.7], minTemp:[19.2,19.3,17.9,14.9,11.8, 9.3, 8.2, 8.8,11.3,14.0,16.6,18.3], et0:[5.5,4.8,4.2,3.1,2.2,1.7,1.9,2.5,3.3,4.2,5.0,5.4] },
+  kempsey:     { rainfall:[165,160,165,140,138,140, 90, 80, 85,105,138,160], maxTemp:[28.5,28.2,27.3,24.6,21.8,19.0,18.5,20.0,22.5,24.8,26.6,28.0], minTemp:[19.0,19.1,17.5,14.5,11.4, 8.8, 7.6, 8.3,11.0,13.7,16.3,18.0], et0:[5.4,4.7,4.1,3.0,2.1,1.6,1.8,2.4,3.2,4.1,4.9,5.3] },
+  taree:       { rainfall:[120,115,120,100,100,110, 75, 65, 70, 85,110,125], maxTemp:[29.0,28.7,27.5,25.0,22.2,19.5,19.0,20.5,22.8,25.0,27.0,28.5], minTemp:[18.8,18.9,17.3,14.0,10.8, 8.0, 6.8, 7.5,10.5,13.5,16.0,17.9], et0:[5.5,4.8,4.2,3.2,2.3,1.8,2.0,2.6,3.4,4.3,5.1,5.5] },
+  coffsharbour:{ rainfall:[190,205,180,155,135,115, 88, 78,105,135,165,185], maxTemp:[27.8,27.5,26.5,24.0,21.2,18.8,18.4,19.8,21.8,23.8,25.8,27.2], minTemp:[20.1,20.3,18.9,16.3,13.5,11.0, 9.8,10.3,12.8,15.5,17.8,19.5], et0:[5.2,4.6,4.0,3.0,2.1,1.6,1.8,2.4,3.1,4.0,4.8,5.2] },
+  lismore:     { rainfall:[175,195,175,150,125,115, 80, 70, 90,105,145,165], maxTemp:[29.0,28.6,27.2,24.5,21.5,19.0,18.5,19.8,22.2,25.0,27.2,28.8], minTemp:[19.8,19.9,18.3,14.9,11.5, 8.8, 7.5, 8.2,11.2,14.2,17.0,19.0], et0:[5.6,4.9,4.3,3.2,2.3,1.7,1.9,2.5,3.3,4.3,5.1,5.6] },
+  casino:      { rainfall:[145,165,150,120,100, 85, 60, 55, 75, 90,115,135], maxTemp:[30.0,29.5,28.0,25.2,22.0,19.2,18.8,20.2,23.0,26.0,28.5,30.0], minTemp:[19.0,19.1,17.5,13.8,10.2, 7.5, 6.2, 7.0,10.2,13.5,16.5,18.5], et0:[5.8,5.1,4.5,3.4,2.5,1.9,2.1,2.7,3.6,4.6,5.5,5.9] },
+  grafton:     { rainfall:[ 95,115,105, 80, 65, 65, 45, 40, 50, 65, 85, 90], maxTemp:[30.2,29.8,28.5,25.5,22.0,19.0,18.5,20.2,23.0,26.0,28.5,30.0], minTemp:[18.5,18.6,16.8,13.2, 9.5, 6.8, 5.5, 6.5, 9.5,12.8,15.5,17.5], et0:[6.0,5.2,4.6,3.5,2.6,2.0,2.2,2.9,3.8,4.8,5.7,6.1] },
+  armidale:    { rainfall:[ 80, 75, 65, 55, 55, 60, 55, 50, 55, 70, 85, 85], maxTemp:[25.5,25.0,23.5,19.8,15.8,12.5,12.0,13.8,17.2,21.0,23.5,25.0], minTemp:[13.5,13.5,11.8, 8.5, 5.0, 2.5, 1.5, 2.5, 5.5, 8.5,11.5,13.0], et0:[4.5,3.9,3.4,2.4,1.6,1.1,1.2,1.8,2.7,3.7,4.5,4.8] },
+  glen_innes:  { rainfall:[ 80, 75, 65, 55, 60, 65, 55, 50, 55, 70, 80, 85], maxTemp:[27.5,27.0,25.0,21.0,16.5,13.0,12.5,14.5,18.5,22.5,25.5,27.0], minTemp:[14.5,14.5,12.5, 8.5, 4.5, 2.0, 0.8, 1.8, 5.5, 9.0,12.2,14.0], et0:[4.8,4.2,3.6,2.6,1.7,1.2,1.3,1.9,2.9,3.9,4.7,5.1] },
+  inverell:    { rainfall:[ 75, 75, 65, 50, 50, 50, 40, 40, 50, 65, 70, 80], maxTemp:[30.5,30.0,28.2,24.0,19.5,15.8,15.5,17.5,21.5,25.8,28.5,30.2], minTemp:[17.2,17.2,15.0,10.5, 6.5, 3.5, 2.2, 3.2, 6.8,11.0,14.5,16.8], et0:[5.8,5.1,4.5,3.3,2.2,1.5,1.7,2.3,3.3,4.5,5.5,6.0] },
+  tamworth:    { rainfall:[ 65, 65, 50, 35, 35, 35, 25, 25, 30, 45, 55, 65], maxTemp:[32.5,32.0,30.0,25.8,20.5,16.5,16.0,18.2,22.5,27.0,30.5,32.5], minTemp:[18.0,18.0,15.8,11.0, 6.5, 3.2, 2.0, 3.2, 7.0,11.5,15.2,17.5], et0:[6.5,5.7,5.0,3.7,2.5,1.8,2.0,2.7,3.8,5.0,6.0,6.6] },
+  narrabri:    { rainfall:[ 60, 60, 45, 35, 35, 30, 25, 20, 30, 45, 55, 65], maxTemp:[33.5,33.0,30.5,26.0,20.5,16.5,16.0,18.5,22.8,27.8,31.5,33.5], minTemp:[19.8,19.8,17.2,12.5, 7.5, 4.0, 2.8, 4.0, 8.0,13.0,17.0,19.5], et0:[7.0,6.1,5.3,3.8,2.6,1.9,2.1,2.9,4.0,5.3,6.4,7.1] },
+  moree:       { rainfall:[ 55, 55, 40, 30, 30, 25, 20, 20, 25, 40, 50, 55], maxTemp:[34.5,34.0,31.5,26.5,21.2,16.8,16.5,18.8,23.5,28.5,32.0,34.5], minTemp:[20.5,20.5,17.8,13.0, 8.0, 4.5, 3.2, 4.5, 8.5,13.5,17.5,20.0], et0:[7.5,6.5,5.7,4.1,2.8,2.0,2.2,3.0,4.3,5.7,6.9,7.6] },
+  toowoomba:   { rainfall:[100, 95, 75, 55, 55, 50, 40, 40, 50, 65, 85,100], maxTemp:[28.5,28.0,26.0,22.5,18.5,15.2,14.8,16.5,20.2,24.0,26.8,28.5], minTemp:[17.5,17.5,15.5,11.8, 8.0, 5.2, 4.0, 5.2, 9.0,13.0,16.0,17.5], et0:[5.5,4.8,4.2,3.0,2.0,1.4,1.6,2.2,3.1,4.2,5.2,5.7] },
+  dalby:       { rainfall:[ 85, 80, 65, 50, 45, 40, 35, 35, 40, 55, 70, 85], maxTemp:[31.5,31.0,29.0,25.0,20.5,16.8,16.5,18.5,22.8,27.2,30.5,31.8], minTemp:[19.5,19.5,17.2,12.8, 8.5, 5.5, 4.2, 5.5, 9.2,14.0,17.5,19.5], et0:[6.5,5.7,5.0,3.6,2.4,1.7,1.9,2.6,3.7,5.0,6.1,6.7] },
+  miles:       { rainfall:[ 75, 70, 55, 40, 35, 30, 25, 25, 30, 45, 60, 70], maxTemp:[32.8,32.5,30.2,26.0,21.0,17.0,16.8,18.8,23.2,28.2,31.5,33.0], minTemp:[20.0,20.0,17.5,12.8, 8.2, 5.2, 3.8, 5.2, 9.0,14.2,17.8,20.0], et0:[6.8,5.9,5.2,3.8,2.6,1.8,2.0,2.8,3.9,5.2,6.3,7.0] },
+  warwick:     { rainfall:[ 80, 75, 60, 50, 50, 50, 40, 35, 45, 55, 70, 75], maxTemp:[29.0,28.5,26.8,23.0,18.8,15.5,15.0,17.0,20.8,24.8,27.5,29.0], minTemp:[16.8,16.8,14.8,11.0, 7.2, 4.5, 3.2, 4.5, 8.5,12.5,15.5,16.8], et0:[5.8,5.0,4.4,3.2,2.1,1.5,1.7,2.3,3.3,4.4,5.4,6.0] },
+  stanthorpe:  { rainfall:[ 75, 75, 65, 55, 55, 55, 50, 40, 50, 65, 70, 75], maxTemp:[27.0,26.5,24.8,21.0,17.0,13.5,13.0,15.0,19.0,23.0,25.8,27.0], minTemp:[14.0,14.0,12.0, 8.2, 4.5, 1.8, 0.8, 1.8, 5.8, 9.5,12.5,14.0], et0:[5.0,4.4,3.8,2.7,1.7,1.1,1.3,1.9,2.9,4.0,5.0,5.4] },
+  goondiwindi: { rainfall:[ 65, 65, 50, 40, 35, 30, 30, 25, 35, 50, 60, 70], maxTemp:[34.0,33.5,31.0,26.5,21.5,17.2,17.0,19.2,23.8,29.0,32.2,34.2], minTemp:[20.5,20.5,17.8,13.0, 8.2, 5.0, 3.8, 5.0, 9.0,14.0,18.0,20.5], et0:[7.2,6.3,5.5,3.9,2.7,1.9,2.1,2.9,4.1,5.6,6.8,7.4] },
+  roma:        { rainfall:[ 75, 70, 55, 35, 30, 30, 25, 25, 30, 40, 55, 70], maxTemp:[33.5,33.0,30.5,26.0,21.0,17.0,16.8,19.0,23.5,28.5,31.8,33.5], minTemp:[20.5,20.5,17.8,13.0, 8.5, 5.5, 4.2, 5.5, 9.5,14.5,18.0,20.5], et0:[7.0,6.1,5.4,3.8,2.6,1.8,2.0,2.8,4.0,5.5,6.7,7.2] },
+  st_george:   { rainfall:[ 60, 55, 40, 25, 25, 25, 20, 20, 25, 35, 50, 60], maxTemp:[34.5,34.0,31.8,27.2,22.0,17.8,17.5,19.8,24.5,29.8,33.0,34.8], minTemp:[21.5,21.5,18.8,14.0, 9.2, 6.0, 4.8, 6.0,10.0,15.2,19.0,21.5], et0:[7.8,6.8,6.0,4.3,2.9,2.0,2.2,3.1,4.5,6.0,7.3,8.0] },
+  kingaroy:    { rainfall:[ 80, 80, 70, 60, 60, 60, 50, 45, 55, 65, 75, 80], maxTemp:[29.8,29.5,27.5,24.0,20.0,16.5,16.0,17.8,21.8,26.0,28.8,30.0], minTemp:[17.8,17.8,15.8,11.8, 8.0, 5.5, 4.2, 5.5, 9.2,13.5,16.5,17.8], et0:[5.8,5.1,4.4,3.2,2.1,1.5,1.7,2.4,3.4,4.6,5.7,6.1] },
+  gympie:      { rainfall:[130,135,120, 95, 80, 65, 55, 50, 65, 85,100,115], maxTemp:[30.5,30.0,28.5,25.5,22.0,19.0,18.8,20.2,23.2,26.5,29.0,30.5], minTemp:[19.5,19.5,17.8,13.8,10.2, 7.5, 6.2, 7.2,11.0,15.0,17.8,19.5], et0:[6.0,5.2,4.6,3.4,2.3,1.7,1.9,2.6,3.6,4.8,5.9,6.3] },
+  brisbane:    { rainfall:[155,160,140, 95, 75, 65, 55, 45, 50, 80,100,130], maxTemp:[29.4,29.0,27.5,25.0,22.0,19.5,19.2,20.5,23.0,26.0,27.8,29.2], minTemp:[20.5,20.5,18.5,15.5,12.2, 9.5, 8.5, 9.5,13.0,16.5,19.0,20.5], et0:[5.8,5.0,4.4,3.2,2.2,1.6,1.8,2.5,3.5,4.6,5.6,6.0] },
+  ipswich:     { rainfall:[105,105, 85, 60, 55, 50, 45, 40, 45, 65, 75, 95], maxTemp:[30.8,30.5,28.8,25.8,22.2,19.5,19.0,20.5,23.5,27.0,29.5,31.0], minTemp:[19.5,19.5,17.5,13.8,10.0, 7.2, 6.0, 7.2,11.0,14.8,17.5,19.5], et0:[6.2,5.4,4.7,3.4,2.3,1.7,1.9,2.6,3.7,4.9,5.9,6.4] },
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const TZ = 'Australia/Sydney';
+let currentLoc = 'pm';
+let rainChartInst = null;
+
+function currentNormals() { return NORMALS_BY_LOC[currentLoc] || NORMALS_BY_LOC.pm; }
+function fmt(d) { return d.toISOString().split('T')[0]; }
+
+function wIcon(code) {
+  if (code == null) return '🌡️';
+  if (code === 0)   return '☀️';
+  if (code <= 2)    return '⛅';
+  if (code === 3)   return '☁️';
+  if (code <= 49)   return '🌫️';
+  if (code <= 59)   return '🌦️';
+  if (code <= 69)   return '🌧️';
+  if (code <= 79)   return '❄️';
+  if (code <= 82)   return '🌦️';
+  if (code <= 84)   return '🌧️';
+  if (code <= 99)   return '⛈️';
+  return '🌡️';
+}
+
+function calcPGI(maxTemps, minTemps, rainfalls, et0s) {
+  const n = Math.min(maxTemps.length, minTemps.length, rainfalls.length, et0s.length);
+  const tScores = [], mScores = [], wb14 = [];
+  const rainBuf = [], etBuf = [];
+  for (let i = 0; i < n; i++) {
+    const avg = ((maxTemps[i] || 20) + (minTemps[i] || 12)) / 2;
+    let ts;
+    if (avg >= 15 && avg <= 28)   ts = 1.0;
+    else if (avg < 5 || avg > 42) ts = 0;
+    else if (avg < 15)            ts = (avg - 5) / 10;
+    else                          ts = Math.max(0, 1 - (avg - 28) / 14);
+    tScores.push(ts);
+    rainBuf.push(rainfalls[i] || 0); etBuf.push(et0s[i] || 2.5);
+    if (rainBuf.length > 14) { rainBuf.shift(); etBuf.shift(); }
+    const wb = rainBuf.reduce((a,b)=>a+b,0) - etBuf.reduce((a,b)=>a+b,0);
+    wb14.push(wb);
+    const ms = Math.max(0, Math.min(1, (wb + 20) / 70));
+    mScores.push(ms);
+  }
+  const pgi14 = tScores.slice(0,14).map((t,i) => Math.round((t * 0.35 + mScores[i] * 0.65) * 100));
+  const avg14 = pgi14.length > 0 ? Math.round(pgi14.reduce((a,b)=>a+b,0) / pgi14.length) : 0;
+  const wb14v = wb14[13] !== undefined ? wb14[13] : wb14[wb14.length-1] || 0;
+  return { avg14, wb14: wb14v };
+}
+
+function pgiLabel(score) {
+  if (score >= 70) return 'Strong Growth';
+  if (score >= 55) return 'Moderate Growth';
+  if (score >= 40) return 'Slow / Stressed';
+  if (score >= 25) return 'Minimal Growth';
+  return 'Pasture Failure Risk';
+}
+function pgiClass(score) {
+  if (score >= 70) return 'pgi-strong';
+  if (score >= 55) return 'pgi-moderate';
+  if (score >= 40) return 'pgi-slow';
+  if (score >= 25) return 'pgi-minimal';
+  return 'pgi-poor';
+}
+
+function generateDecisions(fcast, pgiResult, hist) {
+  const rain7  = fcast.daily.precipitation_sum.slice(0,7).reduce((a,b)=>a+(b||0),0);
+  const rain16 = fcast.daily.precipitation_sum.reduce((a,b)=>a+(b||0),0);
+  const score  = pgiResult.avg14;
+  let hist90 = 0, norm90 = 0;
+  const now = new Date(); const mo = now.getMonth();
+  if (hist) hist90 = hist.daily.precipitation_sum.reduce((a,b)=>a+(b||0),0);
+  const Nf = currentNormals();
+  for (let m = 0; m < 3; m++) norm90 += Nf.rainfall[(mo - m + 12) % 12];
+  const anomPct = norm90 > 0 ? Math.round((hist90 - norm90) / norm90 * 100) : 0;
+  const decs = [];
+
+  let fc, ft;
+  if (score < 30) { fc = 'red'; ft = `PGI of ${score}/100 signals severe pasture deficit. Begin supplementary feeding immediately — hay, silage, or grain. With El Niño probability at 61%, budget for 6–8 weeks of supplementary support.`; }
+  else if (score < 52) { fc = 'amber'; ft = `PGI of ${score}/100 indicates moderate pasture stress. Pre-position supplement stocks and identify priority mobs for early feeding. Monitor pasture covers every 3–4 days.`; }
+  else { fc = 'green'; ft = `PGI of ${score}/100 suggests reasonable pasture growth for the next 14 days. Maintain routine monitoring. Keep supplement stocks available given the El Niño watch.`; }
+  decs.push({ title: 'Supplementary Feeding', status: fc === 'red' ? '🔴 FEED NOW' : fc === 'amber' ? '🟡 PREPARE STOCKS' : '🟢 NOT REQUIRED', color: fc, text: ft });
+
+  let dc, dt;
+  const droughtScore = (anomPct < -30 ? 2 : anomPct < -15 ? 1 : 0) + (score < 40 ? 2 : score < 55 ? 1 : 0) + 1;
+  if (droughtScore >= 4) { dc = 'red'; dt = `90-day rainfall is ${anomPct}% vs average and pasture growth is severely stressed. Begin drought management: destock, feed budget, water security check. Call Ross to review your feeding plan.`; }
+  else if (droughtScore >= 3) { dc = 'amber'; dt = `90-day rainfall tracking ${anomPct > 0 ? '+' : ''}${anomPct}% vs average. Review stock numbers and feed budgets now with a developing El Niño watch.`; }
+  else { dc = 'green'; dt = `90-day rainfall is ${anomPct > 0 ? '+' : ''}${anomPct}% vs average. No immediate drought flags — continue monitoring given the seasonal outlook.`; }
+  decs.push({ title: 'Drought Risk', status: dc === 'red' ? '🔴 ACT NOW' : dc === 'amber' ? '🟡 MONITOR CLOSELY' : '🟢 LOW RISK', color: dc, text: dt });
+
+  let wc, wt;
+  const heavyDays = fcast.daily.precipitation_sum.filter(v=>(v||0)>25).length;
+  if (rain7 > 50 || heavyDays >= 2) { wc = 'sky'; wt = `${Math.round(rain7)}mm expected in the next 7 days (${heavyDays} heavy day${heavyDays>1?'s':''}). Check creek crossings. Move hay off low ground. Watch for bloat risk in high-legume pastures after a flush.`; }
+  else if (rain16 < 15) { wc = 'amber'; wt = `Only ${Math.round(rain16)}mm forecast over 16 days. Dry conditions likely to continue. Prioritise water point checks and track pasture condition weekly.`; }
+  else { wc = 'green'; wt = `${Math.round(rain7)}mm forecast in 7 days, ${Math.round(rain16)}mm over 16 days. Manageable conditions — no weather event flags.`; }
+  decs.push({ title: 'Rain Events & Access', status: rain7 > 50 ? '🔵 FLOOD WATCH' : rain7 > 20 ? '🔵 RAIN COMING' : rain16 < 15 ? '🟡 DRY AHEAD' : '🟢 CLEAR', color: wc, text: wt });
+
+  const now2 = new Date(); const m2 = now2.getMonth();
+  let lc, lt;
+  if (score < 35) { lc = 'red'; lt = `Pasture growth very low — weaning stress on cows is high. Consider early weaning to reduce herd feed demand. Prioritise body condition in cows heading into winter.`; }
+  else if (m2 >= 4 && m2 <= 6 && score < 55) { lc = 'amber'; lt = `Autumn–winter transition with moderate pasture stress. Weaning decisions should factor in cow body condition score (BCS 3 minimum heading into winter). Call Ross for an on-farm assessment.`; }
+  else { lc = 'green'; lt = `Pasture and temperature conditions are reasonable for livestock management. Routine monitoring of body condition scores is sufficient.`; }
+  decs.push({ title: 'Livestock Management', status: lc === 'red' ? '🔴 REVIEW URGENTLY' : lc === 'amber' ? '🟡 PLAN AHEAD' : '🟢 ROUTINE', color: lc, text: lt });
+
+  return decs;
+}
+
+function renderHero(fcast, pgiResult, hist) {
+  const maxT = fcast.daily.temperature_2m_max[0] != null ? fcast.daily.temperature_2m_max[0].toFixed(1) : '—';
+  const rain7 = fcast.daily.precipitation_sum.slice(0,7).reduce((a,b)=>a+(b||0),0);
+  let hist90mm = 0;
+  if (hist) hist90mm = hist.daily.precipitation_sum.reduce((a,b)=>a+(b||0),0);
+  const norm = currentNormals();
+  const now = new Date(); const mo = now.getMonth();
+  let norm90 = 0;
+  for (let m = 0; m < 3; m++) norm90 += norm.rainfall[(mo - m + 12) % 12];
+  const anomPct = norm90 > 0 ? Math.round((hist90mm - norm90) / norm90 * 100) : 0;
+  const anomStr = (anomPct >= 0 ? '+' : '') + anomPct + '%';
+  const pgi = pgiResult.avg14;
+  document.getElementById('heroRow').innerHTML = `
+    <div class="hero-card"><div class="hero-icon">🌡️</div><div class="hero-val">${maxT}°</div><div class="hero-label">Today's Max</div></div>
+    <div class="hero-card"><div class="hero-icon">🌧️</div><div class="hero-val">${Math.round(rain7)}<span style="font-size:0.9rem">mm</span></div><div class="hero-label">7-Day Rain</div></div>
+    <div class="hero-card"><div class="hero-icon">${anomPct < -15 ? '🏜️' : anomPct > 15 ? '💧' : '🌦️'}</div><div class="hero-val" style="color:${anomPct < -15 ? 'var(--amber)' : 'var(--green-dark)'}">${anomStr}</div><div class="hero-label">90-Day vs Avg</div></div>
+    <div class="hero-card ${pgiClass(pgi)}"><div class="hero-icon">🌿</div><div class="hero-val">${pgi}</div><div class="hero-unit">/100 · ${pgiLabel(pgi)}</div><div class="hero-label">Pasture Growth Index</div></div>
+  `;
+}
+
+function renderForecast(fcast) {
+  const d = fcast.daily;
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(d.time[i]);
+    const dow  = DAYS[date.getUTCDay()];
+    const dd   = date.getUTCDate() + ' ' + MONTHS[date.getUTCMonth()].slice(0,3);
+    const max  = d.temperature_2m_max[i] != null ? Math.round(d.temperature_2m_max[i]) : '—';
+    const min  = d.temperature_2m_min[i] != null ? Math.round(d.temperature_2m_min[i]) : '—';
+    const rain = d.precipitation_sum[i] != null ? d.precipitation_sum[i].toFixed(1) : '0';
+    const icon = wIcon(d.weather_code ? d.weather_code[i] : null);
+    html += `<div class="fc-day${i===0?' today':''}"><div class="fc-dow">${dow}</div><div class="fc-date">${dd}</div><div class="fc-icon">${icon}</div><div class="fc-max">${max}°</div><div class="fc-min">${min}°</div><div class="fc-rain">${rain}mm</div></div>`;
+  }
+  document.getElementById('forecastStrip').innerHTML = html;
+}
+
+function renderDecisions(fcast, pgiResult, hist) {
+  const decs = generateDecisions(fcast, pgiResult, hist);
+  document.getElementById('decisionsGrid').innerHTML = decs.map(d => `
+    <div class="dec-card ${d.color}"><div class="dec-title">${d.title}</div><div class="dec-status">${d.status}</div><div class="dec-text">${d.text}</div></div>
+  `).join('');
+}
+
+function renderRainChart(hist, fcast) {
+  const now = new Date(); const yr = now.getFullYear(); const mo = now.getMonth();
+  const monthlyActual = new Array(mo + 1).fill(0);
+  if (hist) {
+    hist.daily.time.forEach((d, i) => {
+      const dm = new Date(d).getUTCMonth(); const dy = new Date(d).getUTCFullYear();
+      if (dy === yr && dm <= mo) monthlyActual[dm] += (hist.daily.precipitation_sum[i] || 0);
+    });
+  }
+  const labels = MONTHS.slice(0, mo + 1);
+  const normals = currentNormals().rainfall.slice(0, mo + 1);
+  if (rainChartInst) { rainChartInst.destroy(); rainChartInst = null; }
+  rainChartInst = new Chart(document.getElementById('rainChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: `${yr} Actual (mm)`, data: monthlyActual.map(v => Math.round(v)), backgroundColor: 'rgba(46,125,69,0.75)', borderRadius: 4 },
+      { label: '30-Year Average (mm)', data: normals, backgroundColor: 'rgba(200,223,208,0.6)', borderRadius: 4 }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#5A7A63', font: { size: 11 } } }, tooltip: { backgroundColor: '#1A4A2A', titleColor: '#fff', bodyColor: 'rgba(255,255,255,0.8)' } }, scales: { x: { ticks: { color: '#5A7A63', font: { size: 11 } }, grid: { color: 'rgba(200,223,208,0.5)' } }, y: { ticks: { color: '#5A7A63', font: { size: 11 } }, grid: { color: 'rgba(200,223,208,0.5)' } } } }
+  });
+}
+
+async function loadData(locKey) {
+  const loc = LOCATIONS[locKey];
+  if (!loc) return;
+  document.getElementById('loadingBar').style.display = '';
+  document.getElementById('mainContent').style.display = 'none';
+  const now = new Date();
+  const d90 = new Date(now); d90.setDate(d90.getDate() - 90);
+  const yest = new Date(now); yest.setDate(yest.getDate() - 1);
+  const fcastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,et0_fao_evapotranspiration&timezone=Australia%2FSydney&forecast_days=16`;
+  const histUrl  = `https://archive-api.open-meteo.com/v1/archive?latitude=${loc.lat}&longitude=${loc.lon}&start_date=${fmt(d90)}&end_date=${fmt(yest)}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,et0_fao_evapotranspiration&timezone=Australia%2FSydney`;
+  try {
+    const [fcastRes, histRes] = await Promise.allSettled([fetch(fcastUrl).then(r=>r.json()), fetch(histUrl).then(r=>r.json())]);
+    const fcast = fcastRes.status === 'fulfilled' ? fcastRes.value : null;
+    const hist  = histRes.status  === 'fulfilled' ? histRes.value  : null;
+    if (!fcast || !fcast.daily) { document.getElementById('loadingBar').innerHTML = '⚠️ Could not load weather data. Please try again.'; return; }
+    let allMax = [], allMin = [], allRain = [], allET0 = [];
+    if (hist && hist.daily) { allMax = allMax.concat(hist.daily.temperature_2m_max||[]); allMin = allMin.concat(hist.daily.temperature_2m_min||[]); allRain = allRain.concat(hist.daily.precipitation_sum||[]); allET0 = allET0.concat(hist.daily.et0_fao_evapotranspiration||[]); }
+    allMax = allMax.concat(fcast.daily.temperature_2m_max||[]); allMin = allMin.concat(fcast.daily.temperature_2m_min||[]); allRain = allRain.concat(fcast.daily.precipitation_sum||[]); allET0 = allET0.concat(fcast.daily.et0_fao_evapotranspiration||[]);
+    const pgiResult = calcPGI(allMax, allMin, allRain, allET0);
+    renderHero(fcast, pgiResult, hist);
+    renderForecast(fcast);
+    renderDecisions(fcast, pgiResult, hist);
+    renderRainChart(hist, fcast);
+    document.getElementById('loadingBar').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+  } catch (err) {
+    document.getElementById('loadingBar').innerHTML = '⚠️ Network error. Check your connection and reload.';
+    console.error(err);
+  }
+}
+
+function onLocChange(val) { currentLoc = val; loadData(val); }
+loadData(currentLoc);
+</script>
+</body>
+</html>
